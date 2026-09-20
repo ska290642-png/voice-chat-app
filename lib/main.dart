@@ -36,7 +36,7 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   int selected = 0;
 
-  final pages = const [
+  final List<Widget> pages = const [
     RoomsPage(),
     GamesPage(),
     FamilyPage(),
@@ -59,11 +59,11 @@ class _HomePageState extends State<HomePage> {
         ),
         actions: [
           IconButton(
-            onPressed: () {},
+            onPressed: () => _showMessage(context, 'No new notifications'),
             icon: const Icon(Icons.notifications_none),
           ),
-          Padding(
-            padding: const EdgeInsets.only(right: 12),
+          const Padding(
+            padding: EdgeInsets.only(right: 12),
             child: Center(
               child: Text(
                 '🪙 12,580',
@@ -112,7 +112,7 @@ class _HomePageState extends State<HomePage> {
 class RoomsPage extends StatelessWidget {
   const RoomsPage({super.key});
 
-  final List<Map<String, String>> rooms = const [
+  static const List<Map<String, String>> rooms = [
     {'name': 'Music & Chill', 'users': '356', 'emoji': '🎵'},
     {'name': 'Game Zone', 'users': '278', 'emoji': '🎮'},
     {'name': 'Friends Forever', 'users': '199', 'emoji': '👥'},
@@ -166,9 +166,7 @@ class RoomsPage extends StatelessWidget {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => VoiceRoomPage(
-                        roomName: room['name']!,
-                      ),
+                      builder: (_) => VoiceRoomPage(roomName: room['name']!),
                     ),
                   );
                 },
@@ -182,10 +180,32 @@ class RoomsPage extends StatelessWidget {
   }
 }
 
-class VoiceRoomPage extends StatelessWidget {
+class VoiceRoomPage extends StatefulWidget {
   final String roomName;
 
   const VoiceRoomPage({super.key, required this.roomName});
+
+  @override
+  State<VoiceRoomPage> createState() => _VoiceRoomPageState();
+}
+
+class _VoiceRoomPageState extends State<VoiceRoomPage> {
+  final List<String?> seats = List<String?>.filled(8, null);
+  bool isMuted = false;
+  bool speakerEnabled = true;
+
+  void _toggleSeat(int index) {
+    setState(() {
+      if (seats[index] == null) {
+        seats[index] = 'You';
+      } else {
+        seats[index] = null;
+      }
+    });
+
+    final seatStatus = seats[index] == null ? 'left' : 'joined';
+    _showMessage(context, 'Seat ${index + 1} $seatStatus');
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -194,7 +214,7 @@ class VoiceRoomPage extends StatelessWidget {
         title: Text(roomName),
         actions: [
           IconButton(
-            onPressed: () {},
+            onPressed: () => _showMessage(context, 'Room link copied (demo)'),
             icon: const Icon(Icons.share),
           ),
         ],
@@ -220,30 +240,43 @@ class VoiceRoomPage extends StatelessWidget {
             '🎙️ Voice Room',
             style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
           ),
-          const SizedBox(height: 25),
+          const SizedBox(height: 8),
+          const Text(
+            'UI demo: voice backend is not connected.',
+            style: TextStyle(color: Colors.white60, fontSize: 12),
+          ),
+          const SizedBox(height: 18),
           Expanded(
             child: GridView.builder(
               padding: const EdgeInsets.all(16),
               itemCount: 8,
-              gridDelegate:
-                  const SliverGridDelegateWithFixedCrossAxisCount(
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 4,
                 mainAxisSpacing: 20,
                 crossAxisSpacing: 12,
               ),
               itemBuilder: (_, index) {
-                return Column(
-                  children: [
-                    CircleAvatar(
-                      radius: 28,
-                      child: Text('${index + 1}'),
-                    ),
-                    const SizedBox(height: 5),
-                    const Text(
-                      'Seat',
-                      style: TextStyle(fontSize: 12),
-                    ),
-                  ],
+                final occupied = seats[index] != null;
+                return InkWell(
+                  onTap: () => _toggleSeat(index),
+                  borderRadius: BorderRadius.circular(40),
+                  child: Column(
+                    children: [
+                      CircleAvatar(
+                        radius: 28,
+                        backgroundColor:
+                            occupied ? Colors.amber : Colors.grey.shade800,
+                        child: occupied
+                            ? const Icon(Icons.person)
+                            : Text('${index + 1}'),
+                      ),
+                      const SizedBox(height: 5),
+                      Text(
+                        occupied ? (seats[index] ?? 'Seat') : 'Seat',
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                    ],
+                  ),
                 );
               },
             ),
@@ -251,10 +284,31 @@ class VoiceRoomPage extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              _RoomButton(icon: Icons.mic, text: 'Mic'),
-              _RoomButton(icon: Icons.card_giftcard, text: 'Gift'),
-              _RoomButton(icon: Icons.chat, text: 'Chat'),
-              _RoomButton(icon: Icons.exit_to_app, text: 'Exit'),
+              _RoomButton(
+                icon: isMuted ? Icons.mic_off : Icons.mic,
+                text: isMuted ? 'Unmute' : 'Mute',
+                onTap: () => setState(() => isMuted = !isMuted),
+              ),
+              _RoomButton(
+                icon: speakerEnabled ? Icons.volume_up : Icons.volume_off,
+                text: speakerEnabled ? 'Speaker' : 'Silent',
+                onTap: () => setState(() => speakerEnabled = !speakerEnabled),
+              ),
+              _RoomButton(
+                icon: Icons.card_giftcard,
+                text: 'Gift',
+                onTap: () => _showMessage(context, 'Gift UI only'),
+              ),
+              _RoomButton(
+                icon: Icons.chat,
+                text: 'Chat',
+                onTap: () => _showMessage(context, 'Chat backend is not connected'),
+              ),
+              _RoomButton(
+                icon: Icons.exit_to_app,
+                text: 'Exit',
+                onTap: () => Navigator.pop(context),
+              ),
             ],
           ),
           const SizedBox(height: 20),
@@ -267,24 +321,30 @@ class VoiceRoomPage extends StatelessWidget {
 class _RoomButton extends StatelessWidget {
   final IconData icon;
   final String text;
+  final VoidCallback onTap;
 
   const _RoomButton({
     required this.icon,
     required this.text,
+    required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        CircleAvatar(
-          radius: 25,
-          backgroundColor: Colors.amber.withOpacity(.15),
-          child: Icon(icon, color: Colors.amber),
-        ),
-        const SizedBox(height: 5),
-        Text(text),
-      ],
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(30),
+      child: Column(
+        children: [
+          CircleAvatar(
+            radius: 25,
+            backgroundColor: Colors.amber.withOpacity(0.15),
+            child: Icon(icon, color: Colors.amber),
+          ),
+          const SizedBox(height: 5),
+          Text(text, style: const TextStyle(fontSize: 11)),
+        ],
+      ),
     );
   }
 }
@@ -292,17 +352,17 @@ class _RoomButton extends StatelessWidget {
 class GamesPage extends StatelessWidget {
   const GamesPage({super.key});
 
+  static const List<Map<String, String>> games = [
+    {'emoji': '🎱', 'name': '8 Ball Pool'},
+    {'emoji': '🃏', 'name': 'Teen Patti'},
+    {'emoji': '🎲', 'name': 'Ludo'},
+    {'emoji': '🏎️', 'name': 'Car Racing'},
+    {'emoji': '🎯', 'name': 'Mini Games'},
+    {'emoji': '🧩', 'name': 'Puzzle'},
+  ];
+
   @override
   Widget build(BuildContext context) {
-    final games = [
-      ['🎱', '8 Ball Pool'],
-      ['🃏', 'Teen Patti'],
-      ['🎲', 'Ludo'],
-      ['🏎️', 'Car Racing'],
-      ['🎯', 'Mini Games'],
-      ['🧩', 'Puzzle'],
-    ];
-
     return GridView.builder(
       padding: const EdgeInsets.all(16),
       itemCount: games.length,
@@ -312,27 +372,35 @@ class GamesPage extends StatelessWidget {
         crossAxisSpacing: 12,
       ),
       itemBuilder: (_, index) {
-        return Card(
-          color: const Color(0xFF151927),
-          child: Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  games[index][0],
-                  style: const TextStyle(fontSize: 45),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  games[index][1],
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'PLAY',
-                  style: TextStyle(color: Colors.amber),
-                ),
-              ],
+        final game = games[index];
+        return InkWell(
+          onTap: () => _showMessage(
+            context,
+            '${game['name']} is a UI demo card; no multiplayer game is implemented.',
+          ),
+          borderRadius: BorderRadius.circular(12),
+          child: Card(
+            color: const Color(0xFF151927),
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    game['emoji']!,
+                    style: const TextStyle(fontSize: 45),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    game['name']!,
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'PLAY',
+                    style: TextStyle(color: Colors.amber),
+                  ),
+                ],
+              ),
             ),
           ),
         );
@@ -356,13 +424,14 @@ class FamilyPage extends StatelessWidget {
         const SizedBox(height: 15),
         Card(
           child: ListTile(
-            leading: const CircleAvatar(
-              child: Text('💚'),
-            ),
+            leading: const CircleAvatar(child: Text('💚')),
             title: const Text('Green Family'),
             subtitle: const Text('Members: 28 • Rank #3'),
             trailing: FilledButton(
-              onPressed: () {},
+              onPressed: () => _showMessage(
+                context,
+                'Family details are local UI demo data.',
+              ),
               child: const Text('OPEN'),
             ),
           ),
@@ -373,10 +442,13 @@ class FamilyPage extends StatelessWidget {
           style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
         ),
         for (int i = 1; i <= 5; i++)
-          ListTile(
-            leading: CircleAvatar(child: Text('$i')),
-            title: Text('Family $i'),
-            trailing: Text('${6000 - i * 500} pts'),
+          InkWell(
+            onTap: () => _showMessage(context, 'Family $i selected'),
+            child: ListTile(
+              leading: CircleAvatar(child: Text('$i')),
+              title: Text('Family $i'),
+              trailing: Text('${6000 - i * 500} pts'),
+            ),
           ),
       ],
     );
@@ -385,6 +457,16 @@ class FamilyPage extends StatelessWidget {
 
 class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});
+
+  static const List<List<dynamic>> items = [
+    [Icons.mic, 'Become a Host'],
+    [Icons.business, 'BD Agency'],
+    [Icons.shield, 'Super Admin'],
+    [Icons.card_giftcard, 'My Gifts'],
+    [Icons.account_balance_wallet, 'My Wallet'],
+    [Icons.emoji_events, 'My Ranking'],
+    [Icons.settings, 'Settings'],
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -409,25 +491,26 @@ class ProfilePage extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 25),
-        _ProfileItem(Icons.mic, 'Become a Host'),
-        _ProfileItem(Icons.business, 'BD Agency'),
-        _ProfileItem(Icons.shield, 'Super Admin'),
-        _ProfileItem(Icons.card_giftcard, 'My Gifts'),
-        _ProfileItem(Icons.account_balance_wallet, 'My Wallet'),
-        _ProfileItem(Icons.emoji_events, 'My Ranking'),
-        _ProfileItem(Icons.settings, 'Settings'),
+        ...items.map(
+          (item) => Card(
+            child: ListTile(
+              leading: Icon(item[0] as IconData, color: Colors.amber),
+              title: Text(item[1] as String),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => _showMessage(
+                context,
+                '${item[1]} opens a UI placeholder screen/dialog.',
+              ),
+            ),
+          ),
+        ),
       ],
     );
   }
+}
 
-  Widget _ProfileItem(IconData icon, String title) {
-    return Card(
-      child: ListTile(
-        leading: Icon(icon, color: Colors.amber),
-        title: Text(title),
-        trailing: const Icon(Icons.chevron_right),
-        onTap: () {},
-      ),
-    );
-  }
+void _showMessage(BuildContext context, String message) {
+  ScaffoldMessenger.of(context)
+    ..hideCurrentSnackBar()
+    ..showSnackBar(SnackBar(content: Text(message)));
 }
