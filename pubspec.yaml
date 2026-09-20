@@ -1,5 +1,5 @@
 name: voice_chat_app
-description: Real Voice Chat App
+description: Voice Chat App UI prototype
 publish_to: "none"
 version: 0.1.0+1
 
@@ -9,12 +9,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-
   cupertino_icons: ^1.0.8
-  firebase_core: ^3.0.0
-  firebase_auth: ^5.0.0
-  cloud_firestore: ^5.0.0
-  firebase_messaging: ^15.0.0
 
 flutter:
   uses-material-design: true
